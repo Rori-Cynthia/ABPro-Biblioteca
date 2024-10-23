@@ -1,9 +1,9 @@
 from excepciones import LibroNoDisponibleError,LibroNoPrestadoError, LibroNoEnPrestamoError, FechaPrestamoNoValidaError
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 class Usuario:
     _numero_usuarios = 0
-    _usuarios = {}
+    _usuarios = set()
 
     def __init__(self, nombre: str, id: str):
         self._nombre = nombre
@@ -11,7 +11,7 @@ class Usuario:
 
         if self.id_es_valido(self._id):
             Usuario._numero_usuarios += 1
-            Usuario._usuarios[self._nombre] = self._id
+            Usuario._usuarios.add(self._id)
         else:
             raise ValueError(f'El ID "{self._id}" no es alfanumérico o ya existe.')
 
@@ -70,6 +70,7 @@ class Administrador(Usuario):
     def eliminar_libro(libro):
         if libro in Libro._catalogo:
             Libro._catalogo.remove(libro)
+            Libro._cantidad_de_libros -= 1
 
     @classmethod
     def contar_libros_disponibles(cls):
@@ -77,17 +78,21 @@ class Administrador(Usuario):
 
 
 class LectorAdministrador(Lector, Administrador):
-    pass
+    def __init__(self, nombre: str, id: str):
+        super().__init__(nombre, id)
 
 
 class Libro():
     _catalogo = []
+    _cantidad_de_libros = 0
     
     def __init__(self, titulo: str, autor: str, codigo: str, estado = "disponible"):
         self.titulo = titulo
         self.autor = autor
         self.codigo = codigo
         self._estado = "disponible"
+
+        Libro._cantidad_de_libros += 1
 
     @property
     def estado(self):
@@ -107,7 +112,7 @@ class Libro():
 
     @classmethod
     def contar_libros(cls):
-        return len(cls._catalogo)
+        return cls._cantidad_de_libros
     
     @classmethod
     def guardar_catalogo(cls, archivo = "catalogo.txt"):
@@ -128,7 +133,7 @@ class Libro():
                 pass
 
     def __str__(self):
-        return f"Libro: titulo: {self.titulo}, autor: {self.autor}, codigo {self.codigo}, estado: {self._estado}"
+        return f"titulo: {self.titulo}, autor: {self.autor}, codigo {self.codigo}, estado: {self._estado}"
 
     def __repr__(self):
         return f"{self.titulo}, {self.autor}, {self.codigo}, {self._estado}"
@@ -138,37 +143,49 @@ class Libro():
 
 
 class Prestamo():
-    _prestamo = []
+    _prestamos = []
 
     def __init__(self, libro: Libro, usuario: Usuario, fecha_prestamo = date.today(), fecha_devolucion = (date.today() + timedelta(weeks=2))):
         self._libro = libro
         self._usuario = usuario
-        self._fecha_prestamo = fecha_prestamo
-        self._fecha_devolucion = fecha_devolucion
+        self._fecha_prestamo = self.convertir_fecha(fecha_prestamo)
+        self._fecha_devolucion = self.convertir_fecha(fecha_devolucion)
 
-        if not self.fecha_es_valida():
+        if not self.fecha_es_valida:
             raise FechaPrestamoNoValidaError
 
     @property
     def fecha_es_valida(self):
         return self._fecha_devolucion >= self._fecha_prestamo
     
-    def registrar_prestamo(self, libro, usuario):
-        if libro._estado == "disponible":
-            usuario.pedir_libro()
-            libro.prestar()
-            Prestamo._prestamo.append(self)
+    @staticmethod
+    def convertir_fecha(fecha_usuario):
+        return datetime.strptime(fecha_usuario, "%Y-%m-%d").date()
+    
+    def registrar_prestamo(self):
+        if self._libro.estado == "disponible":
+            self._usuario.pedir_libro(self._libro)
+            self._libro.prestar()
+            Prestamo._prestamos.append(self)
 
-    def devolver_libro(self,libro, usuario):
-        if libro._estado == "prestado":
-            usuario.devolver_libro()
-            libro.devolver()
-            Prestamo._prestamo.remove(self)
 
+    def devolver_libro(self):
+        if self._libro.estado == "prestado":
+            self._usuario.devolver_libro(self._libro)
+            self._libro.devolver()
+            Prestamo._prestamos.remove(self)
+
+    def __str__(self):
+        return f"Prestamo: [libro: {self._libro}], autor: [{self._usuario}], fecha de prestamo {self._fecha_prestamo}, fecha de devolucion: {self._fecha_devolucion}"
+
+    def __repr__(self):
+        return f"{self._libro}, {self._usuario}, {self._fecha_prestamo}, {self._fecha_devolucion}"
+        
 
 #bloque de pruebas
 usuario1 = Usuario("Juan", "ABPRO1")
 print((usuario1))
+lector = Lector("Cynthia", "ABPRO3")
 admin = Administrador("Roberto", "ABPRO2")
 libro1 = Libro("El grabado en la casa", "H.P. Lovecraft", "ABP001")
 admin.agregar_libro(libro1)
@@ -182,6 +199,11 @@ print(Libro._catalogo)
 Libro.cargar_catalogo()
 print(Libro._catalogo)
 print(Libro.contar_libros())
+print(Prestamo._prestamos)
+prestamo = Prestamo(libro1, lector, "2024-10-01", "2024-10-07")
+print(prestamo)
+Prestamo.registrar_prestamo(prestamo)
+print(Prestamo._prestamos)
 
 
 
