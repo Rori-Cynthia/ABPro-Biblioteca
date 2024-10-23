@@ -17,3 +17,8 @@ class LibroNoEnPrestamoError(Exception):
     def __init__(self, mensaje="El libro no se encuentra en la lista de prestamos de este usuario."):
         self.mensaje = mensaje
         super().__init__(self.mensaje)
+
+class FechaPrestamoNoValidaError(Exception):
+    def __init__(self, mensaje="La fecha de devolución es mayor a la fecha de prestamo."):
+        self.mensaje = mensaje
+        super().__init__(self.mensaje)
