@@ -5,7 +5,7 @@ class Usuario:
     _numero_usuarios = 0
     _usuarios = set()
 
-    def __init__(self, nombre: str, id: str):
+    def __init__(self, nombre: str, id: str, raise_on_existing: bool = True):
         self._nombre = nombre
         self._id = id
 
@@ -13,8 +13,9 @@ class Usuario:
             Usuario._numero_usuarios += 1
             Usuario._usuarios.add(self._id)
         else:
-            raise ValueError(f'El ID "{self._id}" no es alfanumérico o ya existe.')
-
+            if raise_on_existing:
+                raise ValueError(f'El ID "{self._id}" no es alfanumérico o ya existe.')
+            
     def obtener_nombre(self):
         return self._nombre
     
@@ -33,7 +34,7 @@ class Usuario:
         return f'Usuario: nombre: {self._nombre}, id: {self._id}'
     
     def __repr__(self):
-        return f'Usuario({self._nombre}, {self._id})'
+        return f"{self._nombre}, {self._id})"
     
     def __len__(self):
         return self.contar_usuarios()
@@ -67,7 +68,7 @@ class Administrador(Usuario):
         Libro._catalogo.append(libro)
     
     @staticmethod
-    def eliminar_libro(libro):
+    def eliminar_libro(libro):      
         if libro in Libro._catalogo:
             Libro._catalogo.remove(libro)
             Libro._cantidad_de_libros -= 1
@@ -120,6 +121,7 @@ class Libro():
             for libro in cls._catalogo:
                 archivo.write(repr(libro) + "\n")
 
+
     @classmethod
     def cargar_catalogo(cls, archivo = "catalogo.txt"):
         try:
@@ -129,7 +131,7 @@ class Libro():
                     libro = Libro(titulo, autor, codigo, estado)
                     Libro._catalogo.append(libro)
         except FileNotFoundError:
-            with open(archivo, "w", encoding="utf-8") as f:
+            with open(archivo, "w", encoding="utf-8") as archivo:
                 pass
 
     def __str__(self):
@@ -175,11 +177,31 @@ class Prestamo():
             self._libro.devolver()
             Prestamo._prestamos.remove(self)
 
+    @classmethod
+    def guardar_prestamos(cls, archivo = "prestamos.txt"):
+        with open(archivo, "w", encoding="utf-8") as archivo:
+            for prestamo in cls._prestamos:
+                archivo.write(repr(prestamo) + "\n")
+
+    @classmethod
+    def cargar_prestamos(cls, archivo = "prestamos.txt"):
+        try:
+            with open(archivo, "r", encoding="utf-8") as archivo:
+                for linea in archivo:
+                    titulo_libro, autor_libro, codigo_libro, estado_libro, nombre_usuario, id_usuario, fecha_prestamo, fecha_devolucion = linea.strip().split(', ')
+                    prestamo = Prestamo(Libro(titulo_libro, autor_libro, codigo_libro, estado_libro), Usuario(nombre_usuario, id_usuario, False), fecha_prestamo, fecha_devolucion)
+                    prestamo._libro._estado = estado_libro
+                    Prestamo._prestamos.append(prestamo)
+        except FileNotFoundError:
+            with open(archivo, "w", encoding="utf-8") as archivo:
+                pass
+
+
     def __str__(self):
         return f"Prestamo: [libro: {self._libro}], autor: [{self._usuario}], fecha de prestamo {self._fecha_prestamo}, fecha de devolucion: {self._fecha_devolucion}"
 
     def __repr__(self):
-        return f"{self._libro}, {self._usuario}, {self._fecha_prestamo}, {self._fecha_devolucion}"
+        return f"{self._libro.titulo}, {self._libro.autor}, {self._libro.codigo}, {self._libro.estado}, {self._usuario._nombre}, {self._usuario._id}, {self._fecha_prestamo}, {self._fecha_devolucion}"
         
 
 #bloque de pruebas
@@ -204,7 +226,8 @@ prestamo = Prestamo(libro1, lector, "2024-10-01", "2024-10-07")
 print(prestamo)
 Prestamo.registrar_prestamo(prestamo)
 print(Prestamo._prestamos)
-
-
-
-
+Prestamo.guardar_prestamos()
+Prestamo._prestamos.clear()
+print(Prestamo._prestamos)
+Prestamo.cargar_prestamos()
+print(Prestamo._prestamos)
